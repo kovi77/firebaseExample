@@ -60,22 +60,29 @@ public class AccountActivity extends AppCompatActivity {
         userInformation = new UserInformation();
         user = mAuth.getCurrentUser();
 
-        //Profil betöltés utáni adatmezők kitöltése(név, kor, kép)
-        databaseReference.child(user.getUid()).addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                UserInformation user = dataSnapshot.getValue(UserInformation.class);
-                if(user.getName()!= "default") {
-                    String string = "Name: " + user.getName() + " Age: " + user.getAge();
-                    setImage(user);
-                    textView.setText(string);
+
+            databaseReference.child(user.getUid()).addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    UserInformation user = dataSnapshot.getValue(UserInformation.class);
+                    if(user != null){
+                        if(user.getName()!= "default") {
+                            String string = "Name: " + user.getName() + " Age: " + user.getAge();
+                            setImage(user);
+                            textView.setText(string);
+                        }
+                        else{
+
+                        }
+                    }
                 }
-            }
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                System.out.println("Failed: ");
-            }
-        });
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+                    System.out.println("Failed: ");
+                }
+            });
+
+
 
         mAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
