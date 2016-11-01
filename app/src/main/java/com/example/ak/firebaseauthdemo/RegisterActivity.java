@@ -27,7 +27,7 @@ public class RegisterActivity extends AppCompatActivity {
     private DatabaseReference databaseReference;
     private UserInformation userInformation;
 
-
+	
     private FirebaseAuth firebaseAuth;
     private FirebaseAuth.AuthStateListener mAuthListener;
 
@@ -35,9 +35,11 @@ public class RegisterActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
-
+		
         firebaseAuth = FirebaseAuth.getInstance();
+		 //getting the database reference
         databaseReference = FirebaseDatabase.getInstance().getReference();
+		
         userInformation = new UserInformation();
 
         editTextEmail = (EditText) findViewById(R.id.editTextEmail) ;
@@ -94,6 +96,11 @@ public class RegisterActivity extends AppCompatActivity {
                         //checking if success
                         if(task.isSuccessful()){
                             finish();
+							//saving data to firebase database
+							//first we are creating a new child in firebase with the
+							//unique id of logged in user
+							//and then for that user under the unique id we are saving data
+							//for saving data we are using setvalue method this method takes a normal java object
                             databaseReference.child(firebaseAuth.getCurrentUser().getUid()).setValue(userInformation);
                             startActivity(new Intent(getApplicationContext(), AccountActivity.class));
                         }else{

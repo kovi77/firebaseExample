@@ -48,8 +48,10 @@ MainActivity extends AppCompatActivity  {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+		
+		//Returns an instance of this class corresponding to the default FirebaseApp instance.
         firebaseAuth = FirebaseAuth.getInstance();
+		//This method gets invoked in the UI thread on changes in the authentication state
         mAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
@@ -58,13 +60,18 @@ MainActivity extends AppCompatActivity  {
                 }
             }
         };
-
+		//Configure Google Sign-In 
+		//Google Sign-In to request users’ ID and basic profile information,
+		//create a GoogleSignInOptions object with the DEFAULT_SIGN_IN parameter.
+		//To request users’ email addresses as well,
+		//create the GoogleSignInOptions object with the requestEmail option.
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestIdToken(getString(R.string.default_web_client_id))
                 .requestEmail()
                 .build();
 
         mbuttonGoogle = (SignInButton) findViewById(R.id.buttonGoogle);
+		//create a GoogleApiClient object with access to the Google Sign-In API and the options you specified
         mGoogleApiClient = new GoogleApiClient.Builder(getApplicationContext())
                 .enableAutoManage(this, new GoogleApiClient.OnConnectionFailedListener() {
                     @Override
@@ -74,6 +81,7 @@ MainActivity extends AppCompatActivity  {
                 })
                 .addApi(Auth.GOOGLE_SIGN_IN_API,gso)
                 .build();
+				
         mbuttonGoogle.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -87,7 +95,6 @@ MainActivity extends AppCompatActivity  {
 
         progressDialog = new ProgressDialog(this);
 
-        //attaching listener to button
         mbuttonSignup.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -106,6 +113,7 @@ MainActivity extends AppCompatActivity  {
     @Override
     protected void onStart() {
         super.onStart();
+		//Registers a listener to changes in the authentication state.
         firebaseAuth.addAuthStateListener(mAuthListener);
     }
 
@@ -126,7 +134,6 @@ MainActivity extends AppCompatActivity  {
                 firebaseAuthWithGoogle(account);
             } else {
                 // Google Sign In failed, update UI appropriately
-                // ...
                 Toast.makeText(MainActivity.this,"Got an error",Toast.LENGTH_LONG).show();
             }
         }
@@ -134,8 +141,9 @@ MainActivity extends AppCompatActivity  {
 
     private void firebaseAuthWithGoogle(GoogleSignInAccount acct) {
         Log.d(TAG, "firebaseAuthWithGoogle:" + acct.getId());
-
+		//Represents a credential that the Firebase Authentication server can use to authenticate a user.
         AuthCredential credential = GoogleAuthProvider.getCredential(acct.getIdToken(), null);
+		//Asynchronously signs in with the given credentials.
         firebaseAuth.signInWithCredential(credential)
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                     @Override
@@ -150,7 +158,6 @@ MainActivity extends AppCompatActivity  {
                             Toast.makeText(MainActivity.this, "Authentication failed.",
                                     Toast.LENGTH_SHORT).show();
                         }
-                        // ...
                     }
                 });
     }

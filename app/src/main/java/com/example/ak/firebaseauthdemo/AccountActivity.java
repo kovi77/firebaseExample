@@ -60,10 +60,12 @@ public class AccountActivity extends AppCompatActivity {
         userInformation = new UserInformation();
         user = mAuth.getCurrentUser();
 
-
+		// Read from the database
             databaseReference.child(user.getUid()).addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
+					// This method is called once with the initial value and again
+					// whenever data at this location is updated.
                     UserInformation user = dataSnapshot.getValue(UserInformation.class);
                     if(user != null){
                         if(user.getName()!= "default") {
@@ -125,7 +127,11 @@ public class AccountActivity extends AppCompatActivity {
 
         userInformation.setAge(age);
         userInformation.setName(name);
-
+		//saving data to firebase database
+		//first we are creating a new child in firebase with the
+		//unique id of logged in user
+		//and then for that user under the unique id we are saving data
+		//for saving data we are using setvalue method this method takes a normal java object
         databaseReference.child(user.getUid()).setValue(userInformation);
         Toast.makeText(this,"Saved",Toast.LENGTH_LONG).show();
     }
