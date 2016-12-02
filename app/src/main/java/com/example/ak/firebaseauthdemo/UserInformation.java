@@ -7,25 +7,15 @@ package com.example.ak.firebaseauthdemo;
 public class UserInformation {
     public String name;
     public int age;
-    public String imageUrl;
 
     public UserInformation(){
         this.name = "default";
         this.age = 0;
-        this.imageUrl = "default";
 
     }
     public UserInformation(String name,int age){
         this.name = name;
         this.age = age;
-    }
-
-    public String getImageUrl() {
-        return imageUrl;
-    }
-
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
     }
 
     public int getAge() {

@@ -3,8 +3,11 @@ package com.example.ak.firebaseauthdemo;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
+import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Base64;
@@ -18,6 +21,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -25,9 +29,15 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 public class AccountActivity extends AppCompatActivity {
 
@@ -41,8 +51,9 @@ public class AccountActivity extends AppCompatActivity {
     private EditText editTextAge;
     private TextView textView;
     private FirebaseUser user;
-    private ImageView mImageView;
     private UserInformation userInformation;
+    private StorageReference mStorage;
+    private Uri photoURI;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,12 +67,12 @@ public class AccountActivity extends AppCompatActivity {
         editTextName = (EditText) findViewById(R.id.editTextName);
         editTextAge = (EditText) findViewById(R.id.editTextAge);
         textView = (TextView) findViewById(R.id.textView);
-        mImageView = (ImageView) findViewById(R.id.imageView);
         userInformation = new UserInformation();
         user = mAuth.getCurrentUser();
 
+        mStorage = FirebaseStorage.getInstance().getReference();
 		// Read from the database
-            databaseReference.child(user.getUid()).addValueEventListener(new ValueEventListener() {
+           databaseReference.child(user.getUid()).addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
 					// This method is called once with the initial value and again
@@ -70,7 +81,6 @@ public class AccountActivity extends AppCompatActivity {
                     if(user != null){
                         if(user.getName()!= "default") {
                             String string = "Name: " + user.getName() + " Age: " + user.getAge();
-                            setImage(user);
                             textView.setText(string);
                         }
                         else{
@@ -83,9 +93,6 @@ public class AccountActivity extends AppCompatActivity {
                     System.out.println("Failed: ");
                 }
             });
-
-
-
         mAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
@@ -102,15 +109,13 @@ public class AccountActivity extends AppCompatActivity {
         });
         mButtonSave.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
-                saveUserInformation();
+            public void onClick(View v) {saveUserInformation();
                 databaseReference.child(user.getUid()).addValueEventListener(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
                             UserInformation user = dataSnapshot.getValue(UserInformation.class);
 
                             String string = "Name: "+user.getName()+" Age: "+user.getAge();
-                            setImage(user);
                             textView.setText(string);
                     }
                     @Override
@@ -152,34 +157,62 @@ public class AccountActivity extends AppCompatActivity {
         // Handle item selection
         switch (item.getItemId()) {
             case R.id.action_photo:
-                Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-                    startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
-                }
+                dispatchTakePictureIntent();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
     }
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-            Bundle extras = data.getExtras();
-            Bitmap imageBitmap = (Bitmap) extras.get("data");
-            setEncodeBitmap(imageBitmap);
+    String mCurrentPhotoPath;
+
+    private File createImageFile() throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(
+                imageFileName,  /* prefix */
+                ".jpg",         /* suffix */
+                storageDir      /* directory */
+        );
+
+        // Save a file: path for use with ACTION_VIEW intents
+        mCurrentPhotoPath = image.getAbsolutePath();
+        return image;
+    }
+    private void dispatchTakePictureIntent() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // Ensure that there's a camera activity to handle the intent
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            // Create the File where the photo should go
+            File photoFile = null;
+            try {
+                photoFile = createImageFile();
+            } catch (IOException ex) {
+                // Error occurred while creating the File
+            }
+            // Continue only if the File was successfully created
+            if (photoFile != null) {
+                photoURI = FileProvider.getUriForFile(this,
+                        "com.example.ak.firebaseauthdemo.fileprovider",
+                        photoFile);
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+            }
         }
     }
-    public void setEncodeBitmap(Bitmap bitmap) {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
-        String imageEncoded = Base64.encodeToString(baos.toByteArray(), Base64.DEFAULT);
-        userInformation.setImageUrl(imageEncoded);
-    }
-    public void setImage(UserInformation user){
-        if(user.getImageUrl() != null){
-            byte[] decodedByteArray = Base64.decode(user.getImageUrl(), Base64.DEFAULT);
-            Bitmap imageBitmap = BitmapFactory.decodeByteArray(decodedByteArray, 0, decodedByteArray.length);
-            mImageView.setImageBitmap(imageBitmap);
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode,resultCode,data);
+        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+            Uri uri = photoURI;
+            StorageReference filepath = mStorage.child("Photos").child(uri.getLastPathSegment());
+            filepath.putFile(uri).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+                @Override
+                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+                    Toast.makeText(AccountActivity.this,"Upload done",Toast.LENGTH_LONG).show();
+                }
+            });
         }
     }
 }
